@@ -1,0 +1,285 @@
+<!doctype html><html lang="ar" dir="rtl"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1">
+<title>المصحف | نص + معاني الكلمات + المختصر</title>
+<meta name="description" content="قراءة القرآن بالنص العثماني، معاني الكلمات كلمة بكلمة، تفسير المختصر، نسخ الآيات، وحفظ آخر موضع." />
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#0b1220">
+<style>
+:root{
+  --bg:#0b1220;--card:#0e1626;--mut:#9fb3c8;--bor:#1e2b46;--acc:#06b6d4;--txt:#eaf2ff;
+  --fsize:22px; /* حجم خط الآيات */
+}
+:root.light{--bg:#f7fafc;--card:#ffffff;--mut:#4a5568;--bor:#e2e8f0;--acc:#0ea5e9;--txt:#0f172a}
+*{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.7 system-ui,Segoe UI,Arial}
+header{position:sticky;top:0;z-index:5;background:color-mix(in sRGB,var(--bg) 92%,transparent);backdrop-filter:blur(8px);border-bottom:1px solid var(--bor)}
+.wrap{max-width:1100px;margin:0 auto;padding:10px 12px}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.brand{font-weight:800;display:flex;gap:8px;align-items:center}
+.pill{background:color-mix(in sRGB,var(--bg) 60%,#0000);border:1px solid var(--bor);border-radius:999px;padding:5px 10px;color:color-mix(in sRGB,var(--txt) 85%,#fff)}
+select,input{background:color-mix(in sRGB,var(--bg) 70%,#0000);border:1px solid var(--bor);color:var(--txt);border-radius:10px;padding:8px 10px;outline:none}
+main{padding:14px}
+.grid{display:grid;grid-template-columns:1fr;gap:14px}
+@media(min-width:960px){.grid{grid-template-columns:1fr 380px}}
+.card{background:var(--card);border:1px solid var(--bor);border-radius:16px;padding:12px}
+.surahHead{display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.btn{border:1px solid var(--bor);background:color-mix(in sRGB,var(--acc) 18%, var(--bg));color:var(--txt);border-radius:10px;padding:8px 10px;cursor:pointer}
+.btn:hover{filter:brightness(1.05)} .ghost{background:transparent}
+.ayah{padding:10px;border:1px solid var(--bor);border-radius:12px;margin-bottom:10px;background:color-mix(in sRGB,var(--bg) 85%,#0000)}
+.ayah .meta{display:flex;gap:8px;align-items:center;color:var(--mut);font-size:12px;margin-bottom:6px;flex-wrap:wrap}
+.words{line-height:2.2;word-spacing:.3ch;font-size:var(--fsize)}
+.word{display:inline-block;padding:.12rem .28rem;border-radius:8px;cursor:pointer}
+.word:hover{background:color-mix(in sRGB,var(--acc) 14%, var(--bg))}
+.tooltip{position:fixed;z-index:10;background:color-mix(in sRGB,var(--bg) 98%,#0000);border:1px solid var(--bor);border-radius:10px;padding:8px 10px;max-width:70vw}
+.badge{font-size:12px;color:color-mix(in sRGB,var(--txt) 70%,#fff)}
+.loader{opacity:.75}
+.switch{border:1px solid var(--bor);background:transparent;border-radius:999px;padding:6px 10px;cursor:pointer}
+.small{font-size:12px;color:var(--mut)}
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap row" style="justify-content:space-between">
+    <div class="brand">📖 المصحف — نص + معاني + المختصر</div>
+    <div class="row">
+      <button id="theme" class="switch" title="تبديل الوضع">🌙/☀️</button>
+      <div class="row">
+        <button id="fsDec" class="switch" title="تصغير الخط">A−</button>
+        <button id="fsReset" class="switch" title="الحجم الافتراضي">A</button>
+        <button id="fsInc" class="switch" title="تكبير الخط">A+</button>
+      </div>
+      <button id="resume" class="switch" title="اذهب لآخر موضع">⤴️ متابعة</button>
+      <span class="pill" id="pwaState" style="display:none"></span>
+    </div>
+  </div>
+  <div class="wrap row" style="gap:10px 12px">
+    <select id="surahSel"></select>
+    <input id="searchAyah" placeholder="ابحث داخل السورة الحالية…" style="flex:1 1 280px">
+    <button id="prev" class="btn">السابق</button>
+    <button id="next" class="btn">التالي</button>
+  </div>
+</header>
+
+<main class="wrap grid">
+  <section class="card">
+    <div class="surahHead">
+      <div><span id="sName" style="font-weight:800"></span> <span id="sInfo" class="badge"></span></div>
+      <div class="row">
+        <button id="copyAll" class="btn">نسخ السورة كاملة</button>
+      </div>
+    </div>
+    <div class="small">اضغط كلمة لعرض معناها • أزرار النسخ لكل آية موجودة أعلى الآية.</div>
+    <div id="ayahs"></div>
+  </section>
+
+  <aside class="card">
+    <h3>التفسير — المختصر</h3>
+    <div id="tafsirBox" style="min-height:180px"><span class="badge">اختر آية لعرض التفسير…</span></div>
+    <h3 style="margin-top:14px">إعدادات معاني الكلمات</h3>
+    <div>
+      <label class="pill"><input type="checkbox" id="optArabic"> تفضيل المعنى بالعربية (إن توفر)</label>
+      <div class="badge" style="margin-top:6px">اضغط على أي كلمة لعرض معناها</div>
+    </div>
+  </aside>
+</main>
+
+<div id="tooltip" class="tooltip" style="display:none"></div>
+
+<script>
+/* ====== PWA register ====== */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', async () => {
+    try {
+      const reg = await navigator.serviceWorker.register('./sw.js');
+      const el = document.getElementById('pwaState'); el.style.display='inline-block';
+      el.textContent = reg.active ? '✅ أوفلاين جاهز' : '…جاري تجهيز الأوفلاين';
+    } catch(e){ /* ignore */ }
+  });
+}
+
+/* ====== Theme + Font size ====== */
+const THEME_KEY='q_theme', FS_KEY='q_fs';
+(function initTheme(){
+  const t = localStorage.getItem(THEME_KEY);
+  if(t==='light') document.documentElement.classList.add('light');
+  const fs = +localStorage.getItem(FS_KEY) || 22;
+  document.documentElement.style.setProperty('--fsize', fs+'px');
+})();
+document.getElementById('theme').onclick = ()=>{
+  document.documentElement.classList.toggle('light');
+  localStorage.setItem(THEME_KEY, document.documentElement.classList.contains('light')?'light':'dark');
+};
+const setFS = v=>{ document.documentElement.style.setProperty('--fsize', v+'px'); localStorage.setItem(FS_KEY, v); };
+document.getElementById('fsInc').onclick = ()=> setFS(Math.min(40, (+getComputedStyle(document.documentElement).getPropertyValue('--fsize').replace('px','')||22)+2));
+document.getElementById('fsDec').onclick = ()=> setFS(Math.max(16, (+getComputedStyle(document.documentElement).getPropertyValue('--fsize').replace('px','')||22)-2));
+document.getElementById('fsReset').onclick = ()=> setFS(22);
+
+/* ====== API & Elements ====== */
+const API = "https://api.quran.com/api/v4";
+const sSel = document.getElementById('surahSel'), sName = document.getElementById('sName'), sInfo = document.getElementById('sInfo');
+const ayahsEl = document.getElementById('ayahs'), tBox = document.getElementById('tafsirBox');
+const searchEl = document.getElementById('searchAyah'); const tip = document.getElementById('tooltip');
+const optAr = document.getElementById('optArabic');
+let CHAPS=[], CUR=1, AYAH_TAFSIR={}, TAFSIR_ID=null, CUR_SURAH_NAME='';
+
+/* ====== Utils ====== */
+const qsa = (sel,root=document)=>[...root.querySelectorAll(sel)];
+function copy(txt){ navigator.clipboard?.writeText(txt); }
+function esc(s){ return s.replace(/[&<>"]/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;' }[m])); }
+function decodeHtml(s){ return s.replace(/&amp;/g,'&').replace(/&lt;/g,'<').replace(/&gt;/g,'>'); }
+
+/* ====== Chapters ====== */
+async function fetchChapters(){
+  const r = await fetch(`${API}/chapters?language=ar`); const j = await r.json();
+  CHAPS = j.chapters||[];
+  sSel.innerHTML = CHAPS.map(c=>`<option value="${c.id}">${c.id}. ${c.name_simple} — ${c.name_arabic}</option>`).join('');
+}
+
+/* ====== Resolve “المختصر” id (fallbacks) ====== */
+async function resolveMukhtasarId(){
+  try{
+    const r = await fetch(`${API}/resources/tafsirs?language=ar`); const j = await r.json();
+    const list = j.tafsirs||[];
+    const pick = kw => list.find(t => (t.name||'').includes(kw) || (t.slug||'').includes(kw));
+    return (pick('المختصر')||pick('mukhtasar')||pick('الميسر')||pick('muyassar')||pick('ابن كثير')||pick('kathir'))?.id || null;
+  }catch(e){ return null; }
+}
+
+/* ====== Load Surah ====== */
+async function loadSurah(ch){
+  CUR = ch; localStorage.setItem('last_ch', ch); localStorage.setItem('last_verse',''); // reset last verse selection
+  sSel.value = ch;
+  const chapter = CHAPS.find(c=>c.id==ch);
+  CUR_SURAH_NAME = chapter?.name_arabic || '';
+  sName.textContent = `${CUR_SURAH_NAME} (${chapter?.name_simple||''})`;
+  sInfo.textContent = `${chapter?.revelation_place==='makkah'?'مكي':'مدني'} • ${chapter?.verses_count} آية`;
+  ayahsEl.innerHTML = `<div class="badge loader">جارِ تحميل الآيات…</div>`;
+
+  const langPref = optAr.checked ? 'ar' : 'en';
+  let page=1, pages=1, all=[];
+  do{
+    const url = `${API}/verses/by_chapter/${ch}?language=${langPref}&words=true&word_fields=translation,transliteration&fields=text_uthmani&per_page=50&page=${page}`;
+    const r = await fetch(url); const j = await r.json();
+    all = all.concat(j.verses||[]);
+    pages = j.pagination?.total_pages || 1; page++;
+  } while(page<=pages);
+
+  renderAyat(all);
+  await loadSurahTafsir(ch);
+}
+
+/* ====== Load Tafsir ====== */
+async function loadSurahTafsir(ch){
+  AYAH_TAFSIR = {};
+  if(!TAFSIR_ID){ tBox.innerHTML=`<span class="badge">لا يمكن تحديد “المختصر” الآن.</span>`; return; }
+  tBox.innerHTML = `<span class="badge loader">جارِ تحميل التفسير…</span>`;
+  try{
+    const url = `${API}/tafsirs/${TAFSIR_ID}?chapter_number=${ch}`;
+    const r = await fetch(url); const j = await r.json();
+    (j.tafsirs||[]).forEach(t => { AYAH_TAFSIR[t.verse_key] = t.text; });
+    tBox.innerHTML = `<span class="badge">اضغط آية لعرض تفسيرها</span>`;
+  }catch(e){
+    tBox.innerHTML = `<span class="badge">تعذّر جلب التفسير.</span>`;
+  }
+}
+
+/* ====== Render ====== */
+function renderAyat(list){
+  const q = (searchEl.value||'').trim();
+  const filtered = q ? list.filter(v => (v.text_uthmani||'').includes(q) || (v.verse_key||'').includes(q)) : list;
+
+  ayahsEl.innerHTML = filtered.map(v=>{
+    const words = (v.words||[]).map(w=>{
+      const tr = w.translation?.text || w.transliteration?.text || '';
+      const disp = w.text_uthmani || w.code_v1 || w.text_indopak || w.text_imlaei_simple || w.char_type_name;
+      return `<span class="word" data-mean="${esc(tr||'')}" data-key="${v.verse_key}">${disp}</span>`;
+    }).join(' ');
+
+    const copy1 = `﴿${(v.text_uthmani||'').trim()}﴾ (${v.verse_key})`;
+    const [sId,aNum] = String(v.verse_key).split(':');
+    const copy2 = `﴿${(v.text_uthmani||'').trim()}﴾ (${CUR_SURAH_NAME} ${aNum})`;
+
+    return `
+      <div class="ayah" id="a-${v.verse_key}">
+        <div class="meta">
+          <span class="pill">﴿ ${v.verse_number} ﴾</span>
+          <button class="btn ghost" data-copy="${esc(copy1)}" title="نسخ: نص + رقم المفتاح">📋 نسخ (2:255)</button>
+          <button class="btn ghost" data-copy="${esc(copy2)}" title="نسخ: نص + اسم السورة + رقم الآية">📋 نسخ (البقرة 255)</button>
+          <button class="btn ghost" data-taf="${v.verse_key}" title="عرض المختصر">📘 المختصر</button>
+        </div>
+        <div class="words" dir="rtl">${words}</div>
+      </div>
+    `;
+  }).join('');
+
+  // نسخ
+  qsa('[data-copy]', ayahsEl).forEach(b=>{
+    b.onclick = ()=>{
+      copy(decodeHtml(b.getAttribute('data-copy')));
+      b.textContent='✓ نُسِخ'; setTimeout(()=>b.textContent=b.title.includes('السورة')?'📋':'📋',900);
+    };
+  });
+  // تفسير
+  qsa('[data-taf]', ayahsEl).forEach(b=>{
+    b.onclick = ()=>{
+      const key = b.getAttribute('data-taf');
+      localStorage.setItem('last_verse', key);
+      const html = AYAH_TAFSIR[key] || '<span class="badge">لا يوجد نص للمختصر لهذه الآية الآن.</span>';
+      tBox.innerHTML = `<div style="line-height:1.9">${html}</div>`;
+      // Scroll highlight
+      const el = document.getElementById('a-'+key);
+      el?.scrollIntoView({behavior:'smooth', block:'center'});
+    };
+  });
+  // Tooltip معاني الكلمات + حفظ آخر آية لمسها المستخدم
+  qsa('.word', ayahsEl).forEach(w=>{
+    w.addEventListener('click', ()=>{
+      const key = w.getAttribute('data-key')||'';
+      if(key) localStorage.setItem('last_verse', key);
+      const txt = w.getAttribute('data-mean')||'';
+      if(!txt) return;
+      showTip(w, txt);
+    });
+  });
+}
+function showTip(target, html){
+  const tip = document.getElementById('tooltip');
+  tip.style.display='block'; tip.innerHTML = html;
+  const r = target.getBoundingClientRect();
+  tip.style.right = (window.innerWidth - r.right + 8)+'px';
+  tip.style.top = (r.top - tip.offsetHeight - 8 < 0 ? r.bottom + 8 : r.top - tip.offsetHeight - 8)+'px';
+  setTimeout(()=>{ document.addEventListener('click', ()=> tip.style.display='none', {once:true}); },0);
+}
+
+/* ====== Events ====== */
+document.getElementById('copyAll').onclick = ()=>{
+  const txt = qsa('.ayah .words').map(d=>d.textContent.trim()).join('\n');
+  copy(txt); alert('تم نسخ السورة كاملة.');
+};
+document.getElementById('prev').onclick = ()=> loadSurah(Math.max(1, CUR-1));
+document.getElementById('next').onclick = ()=> loadSurah(Math.min(114, CUR+1));
+document.getElementById('surahSel').addEventListener('change', e=> loadSurah(+e.target.value));
+document.getElementById('searchAyah').addEventListener('input', ()=> loadSurah(CUR));
+document.getElementById('optArabic').addEventListener('change', ()=> loadSurah(CUR));
+document.getElementById('resume').onclick = ()=>{
+  const ch = +(localStorage.getItem('last_ch')||1);
+  const vkey = localStorage.getItem('last_verse')||'';
+  if (ch !== CUR) { loadSurah(ch).then(()=> jumpTo(vkey)); }
+  else jumpTo(vkey);
+};
+function jumpTo(vkey){
+  if(!vkey) return;
+  const el = document.getElementById('a-'+vkey);
+  el?.scrollIntoView({behavior:'smooth', block:'center'});
+  el?.classList.add('blink'); setTimeout(()=>el?.classList.remove('blink'),1200);
+}
+
+/* ====== Init ====== */
+(async function init(){
+  await fetchChapters();
+  TAFSIR_ID = await resolveMukhtasarId();
+  const last = +localStorage.getItem('last_ch') || 1;
+  loadSurah(last);
+})();
+</script>
+</body></html>
